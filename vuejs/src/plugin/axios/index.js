@@ -1,6 +1,6 @@
 import axios from "axios";
 import store from "@/store";
-import notify from "@/components/notification";
+// import router from "@/router";
 
 // Create an axios instance
 const service = axios.create({
@@ -34,28 +34,15 @@ service.interceptors.response.use(
       switch (error.response.status) {
         case 401:
           error.message = "You Don't Deserve this Glory!! 😝";
-          notify({
-            title: "Error While Making Request",
-            message: error.message,
-            type: "error",
-            duration: 5 * 1000,
-          });
-          break;
-        case 500:
-          error.message = "Drive Returned Null";
-          notify({
-            title: "Error While Making Request",
-            message: error.message,
-            type: "error",
-            duration: 5 * 1000,
-          });
           break;
         default:
-        console.log(error);
-        break;
+          break;
       }
     }
-    return Promise.reject(error);
+    console.log(error);
+    return error;
+    // router.app.$router.go(-1);
+    // return Promise.reject(error);
   }
 );
 

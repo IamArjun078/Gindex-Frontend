@@ -185,7 +185,6 @@ import {
   initializeUser,
   getgds,
 } from "@utils/localUtils";
-import { apiRoutes, backendHeaders } from "@/utils/backendUtils";
 import Loading from 'vue-loading-overlay';
 export default {
   components: {
@@ -214,10 +213,10 @@ export default {
       deletePassword: "",
       errorMessage: false,
       successMessage: false,
-      inviteAdmin: apiRoutes.inviteAdmin,
-      inviteSuperAdmin:  apiRoutes.inviteSuperAdmin,
-      deleteUser: apiRoutes.deleteUser,
-      deleteAdmin: apiRoutes.deleteAdmin,
+      inviteAdmin: window.apiRoutes.inviteAdmin,
+      inviteSuperAdmin:  window.apiRoutes.inviteSuperAdmin,
+      deleteUser: window.apiRoutes.deleteUser,
+      deleteAdmin: window.apiRoutes.deleteAdmin,
       inviteInput: false,
       deleteInput: false,
       inviteApi: "",
@@ -241,7 +240,7 @@ export default {
       if(this.apiurl.length > 0){
         this.$http.post(this.apiurl, {
             email: this.user.email,
-        }, backendHeaders(this.token.token)).then(response => {
+        }).then(response => {
           if(response.data.auth && response.data.registered){
             this.loading = false;
             this.metatitle = "Success...";
@@ -255,7 +254,6 @@ export default {
       }
     },
     gotoPage(url, cmd) {
-      this.$ga.event({eventCategory: "Page Navigation",eventAction: url+" - "+this.siteName,eventLabel: "Manage Users"})
       if(cmd){
         this.$router.push({ path: '/'+ this.currgd.id + ':' + cmd + url })
       } else {
@@ -277,7 +275,7 @@ export default {
             email: user.email,
             adminpass: this.deletePassword,
             adminuseremail: this.user.email,
-      }, backendHeaders(this.token.token)).then(response => {
+      }).then(response => {
         if(action == "delete"){
           if(response.data.auth && response.data.registered && response.data.deleted){
             this.usermodal = false;
@@ -314,19 +312,17 @@ export default {
               email: user.email,
               message: this.inviteMessage,
               adminuseremail: this.user.email,
-        }, backendHeaders(this.token.token)).then(response => {
+        }).then(response => {
           if(response.data.auth && response.data.registered){
             this.successMessage = true;
             this.metatitle = "Invite Sent...";
             this.errorMessage = false;
-            this.$ga.event({eventCategory: "Invite",eventAction: "Success"+" - "+this.siteName,eventLabel: "Manage Users"})
             this.resultmessage = response.data.message;
             this.loading = false;
           } else {
             this.successMessage = false;
             this.errorMessage = true;
             this.metatitle = "Invite Failed...";
-            this.$ga.event({eventCategory: "Invite",eventAction: "Failed"+" - "+this.siteName,eventLabel: "Manage Users"})
             this.resultmessage = response.data.message;
             this.loading = false;
           }
@@ -343,15 +339,16 @@ export default {
       this.metatitle = "Handling the Changes...";
       let route = "";
       if(user.role == "User"){
-        route = apiRoutes.getPendingAdmins;
+        route = window.apiRoutes.getPendingAdmins;
       } else if(user.role == "Admin"){
-        route = apiRoutes.getPendingSuperAdmins;
+        route = window.apiRoutes.getPendingSuperAdmins;
       }
+      console.log(route);
       if(user.role == "User" || user.role == "Admin"){
         this.loading = true;
         this.$http.post(route, {
               adminuseremail: this.user.email,
-        }, backendHeaders(this.token.token)).then(response => {
+        }).then(response => {
           if(response){
             console.log(response);
             if(response.data.auth && response.data.registered){
@@ -399,12 +396,10 @@ export default {
     var userData = initializeUser();
     if(userData.isThere){
       if(userData.type == "hybrid"){
-        this.$ga.event({eventCategory: "User Initialized",eventAction: "Hybrid - "+this.siteName,eventLabel: "Manage Users",nonInteraction: true})
         this.user = userData.data.user;
         this.logged = userData.data.logged;
         this.loading = userData.data.loading;
       } else if(userData.type == "normal"){
-        this.$ga.event({eventCategory: "User Initialized",eventAction: "Normal - "+this.siteName,eventLabel: "Manage Users",nonInteraction: true})
         this.user = userData.data.user;
         this.token = userData.data.token;
         this.logged = userData.data.logged;
@@ -427,10 +422,10 @@ export default {
   mounted() {
     if(this.admin && this.superadmin){
       this.loading = false;
-      this.apiurl = apiRoutes.getAll;
+      this.apiurl = window.apiRoutes.getAll;
     } else if(this.admin && !this.superadmin) {
       this.loading = false;
-      this.apiurl = apiRoutes.getUsers;
+      this.apiurl = window.apiRoutes.getUsers;
     } else {
       this.$router.push({ name: 'results', params: { id: this.currgd.id, cmd: "result", data: "UnAuthorized Route.", redirectUrl: "/", tocmd: 'home' } })
     }
@@ -439,11 +434,6 @@ export default {
     let gddata = getgds(this.$route.params.id);
     this.gds = gddata.gds;
     this.currgd = gddata.current;
-    this.$ga.page({
-      page: this.$route.path,
-      title: "Manage Users"+" - "+this.siteName,
-      location: window.location.href
-    });
   },
   watch: {
     searchEmail: function(){

@@ -58,7 +58,28 @@
            <div :class=" ismobile ? 'column is-full mt-2 mr-0'  : 'column is-full ml-2 mr-0 pl-4 pr-0'">
              <div class="columns is-mobile">
                <div class="column is-half">
-                 <h2 class="subtitle has-text-netflix-only has-text-weight-bold">
+                 <h2 class="subtitle has-text-white has-text-weight-bold">
+                   Top Trending
+                 </h2>
+               </div>
+               <div class="column pr-4 mr-4 is-half has-text-centered">
+                 <span class="icon has-text-weight-bold has-text-netflix" style="cursor: pointer;font-size:18px;">
+                   <i class="fas fa-arrow-alt-circle-left" @click="swipeLeft('trend')"></i>
+                 </span>
+                 <span class="icon has-text-weight-bold has-text-netflix" style="cursor: pointer;font-size:18px;">
+                   <i class="fas fa-arrow-alt-circle-right" @click="swipeRight('trend')"></i>
+                 </span>
+               </div>
+             </div>
+             <div class="trending-block" ref="trend">
+               <div v-for="(trend, index) in trending" v-bind:key="index" class="trend-link" @click="gotoPage('/'+trend.link+'/')" :style="'background: url('+trend.poster+');background-size:cover;cursor: pointer;'">
+               </div>
+             </div>
+           </div>
+           <div :class=" ismobile ? 'column is-full mt-2 mr-0'  : 'column is-full ml-2 mr-0 pl-4 pr-0'">
+             <div class="columns is-mobile">
+               <div class="column is-half">
+                 <h2 class="subtitle has-text-white has-text-weight-bold">
                    Categories
                  </h2>
                </div>
@@ -76,19 +97,6 @@
                  <h1 class="title is-4 has-text-centered has-text-white has-text-weight-bold" style="display: flex;align-items: baseline;">
                    {{ cat.name }}
                  </h1>
-               </div>
-             </div>
-           </div>
-           <div :class=" ismobile ? 'column is-full mt-2 mr-0'  : 'column is-full ml-2 mr-0 pl-4 pr-0'">
-             <div class="columns is-mobile">
-               <div class="column is-half">
-                 <h2 class="subtitle has-text-netflix-only has-text-weight-bold">
-                   Top Trending
-                 </h2>
-               </div>
-             </div>
-             <div class="trending-block" ref="trend">
-               <div v-for="(trend, index) in trending" v-bind:key="index" class="trend-link" @click="gotoPage('/'+trend.link+'/')" :style="'background: url('+trend.poster+');background-size:cover;cursor: pointer;'">
                </div>
              </div>
            </div>
@@ -229,7 +237,6 @@ import {
   scrollTo,
   shuffle
 } from "@utils/localUtils";
-import { apiRoutes } from "@/utils/backendUtils";
 import Loading from 'vue-loading-overlay';
 import 'vue-loading-overlay/dist/vue-loading.css';
     export default {
@@ -276,7 +283,6 @@ import 'vue-loading-overlay/dist/vue-loading.css';
         },
         methods: {
           gotoPage(url, cmd) {
-            this.$ga.event({eventCategory: "Page Navigation",eventAction: url+" - "+this.siteName,eventLabel: "Home"})
             if(cmd){
               this.$router.push({ path: '/'+ this.currgd.id + ':' + cmd + url })
             } else {
@@ -292,7 +298,6 @@ import 'vue-loading-overlay/dist/vue-loading.css';
                 this.logged = userData.data.logged;
                 this.loading = userData.data.loading;
                 this.$meta().refresh
-                this.$ga.event({eventCategory: "User Initialized",eventAction: "Hybrid - "+this.siteName,eventLabel: "Home",nonInteraction: true})
               } else if(userData.type == "normal"){
                 this.user = userData.data.user;
                 this.token = userData.data.token;
@@ -301,7 +306,6 @@ import 'vue-loading-overlay/dist/vue-loading.css';
                 this.admin = userData.data.admin;
                 this.$meta().refresh
                 this.superadmin = userData.data.superadmin;
-                this.$ga.event({eventCategory: "User Initialized",eventAction: "Normal - "+this.siteName,eventLabel: "Home",nonInteraction: true})
               }
             } else {
               this.$meta().refresh
@@ -313,44 +317,37 @@ import 'vue-loading-overlay/dist/vue-loading.css';
             this.loading = true;
             e.preventDefault();
             if(this.email.length > 0){
-              this.$http.post(apiRoutes.checkEmail, {
+              this.$http.post(window.apiRoutes.checkEmail, {
                   email: this.email,
               }).then(response => {
                 if(response.data.auth && response.data.user && response.data.status == "User Present & Verified"){
                   this.loading = false;
-                  this.$ga.event({eventCategory: "Email Verification",eventAction: "User Present & Verified"+" - "+this.siteName,eventLabel: "Home"})
                   this.$bus.$emit('verified', 'User Verified')
                   this.$router.push({ name: 'login', params: { cmd: 'login', id:0, email: this.email } })
                 } else if(!response.data.auth && response.data.user && response.data.status == "User Present & Not Verified"){
                   this.loading = false;
                   this.$bus.$emit('verified', 'User Verified')
-                  this.$ga.event({eventCategory: "Email Verification",eventAction: "User Present & Not Verified"+" - "+this.siteName,eventLabel: "Home"})
                   this.$router.push({ name: 'otp', params: { cmd: 'register', id:0, email: this.email } })
                 } else if(!response.data.auth && !response.data.user && response.data.status == "User Not Present"){
                   this.loading = false;
                   this.$bus.$emit('verified', 'User Verified')
-                  this.$ga.event({eventCategory: "Email Verification",eventAction: "User Not Present"+" - "+this.siteName,eventLabel: "Home"})
                   this.$router.push({ name: 'request' , params: { cmd: 'register', id: 0, email: this.email } })
                 } else if(!response.data.auth && !response.data.user && response.data.status == "Pending Confirmation from Admins."){
                   this.loading = false;
                   this.$bus.$emit('verified', 'User Verified')
-                  this.$ga.event({eventCategory: "Email Verification",eventAction: "Pending Confirmation from Admins"+" - "+this.siteName,eventLabel: "Home"})
                   this.$router.push({ name: 'results', params: { cmd: 'result', id: 0, noredirect: true, success: true, data: "You Are Currently Pending Confirmation from Admins. Please Wait till they Accept Your Request." } })
                 } else if(!response.data.auth && !response.data.user && response.data.status == "Spammed User"){
                   this.loading = false;
                   this.$bus.$emit('verified', 'User Verified')
-                  this.$ga.event({eventCategory: "Email Verification",eventAction: "Spammed User"+" - "+this.siteName,eventLabel: "Home"})
                   this.$router.push({ name: 'results', params: { cmd: 'result', id: 0, noredirect: true, success: false, data: "You are being Added to Our Spam List for Violations. Please Contact Admins for Help." } })
                 } else {
                   this.loading = false;
                   this.$bus.$emit('verified', 'User Verified')
-                  this.$ga.event({eventCategory: "Email Verification",eventAction: "Network Error"+" - "+this.siteName,eventLabel: "Home"})
                   this.$router.push({ name: 'results', params: { cmd: 'result', id: 0, noredirect: true, success: false, data: "There's Some Error With Your Network. Please Try Again Later." } })
                 }
               }).catch(error => {
                 this.loading = false;
                 this.$bus.$emit('verified', 'User Verified')
-                this.$ga.event({eventCategory: "Email Verification",eventAction: "Network Error"+" - "+this.siteName,eventLabel: "Home"})
                 console.log(error);
                 this.$router.push({ name: 'login', params: { cmd: 'login', id:0, email: this.email } })
               })
@@ -404,11 +401,6 @@ import 'vue-loading-overlay/dist/vue-loading.css';
           let gddata = getgds(this.$route.params.id);
           this.gds = gddata.gds;
           this.currgd = gddata.current;
-          this.$ga.page({
-            page: this.$route.path,
-            title: "Home"+" - "+this.siteName,
-            location: window.location.href
-          });
           setInterval(() => {
             this.mainhero = this.mainHeroArray[this.mainKey]
             if(this.mainKey == this.mainHeroArray.length-1){

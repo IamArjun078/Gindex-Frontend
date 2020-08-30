@@ -38,7 +38,6 @@
 </template>
 
 <script>
-import { apiRoutes, backendHeaders } from "@/utils/backendUtils";
 import { initializeUser, getgds } from "@utils/localUtils";
 import pdf from "vue-pdf-modified/src/vuePdfNoSssNoWorker";
 import Loading from 'vue-loading-overlay';
@@ -107,6 +106,10 @@ export default {
       this.metatitle = decodeURIComponent(this.url.split('/').pop().split('.').slice(0,-1).join('.'));
     },
     previousPage() {
+      if(this.$audio.player() == undefined){
+        this.$audio.createPlayer();
+      }
+      this.$audio.destroy();
       if(this.page == 1){
         this.page = 1;
       } else {
@@ -114,6 +117,14 @@ export default {
       }
     },
     nextPage() {
+      if(this.$audio.player() == undefined){
+        this.$audio.createPlayer();
+      }
+      this.$audio.player().list.add({
+        name: "summas",
+        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+        cover: window.themeOptions.audio.default_poster
+      });
       if(this.page >= this.pageCount){
         this.page = this.currentPage
       } else {
@@ -128,10 +139,8 @@ export default {
     if(userData.isThere){
       if(userData.type == "hybrid"){
         this.user = userData.data.user;
-        this.$ga.event({eventCategory: "User Initialized",eventAction: "Hybrid - "+this.siteName,eventLabel: "PDF",nonInteraction: true})
         this.logged = userData.data.logged;
       } else if(userData.type == "normal"){
-        this.$ga.event({eventCategory: "User Initialized",eventAction: "Normal - "+this.siteName,eventLabel: "PDF",nonInteraction: true})
         this.user = userData.data.user;
         this.token = userData.data.token;
         this.logged = userData.data.logged;
@@ -139,10 +148,10 @@ export default {
     } else {
       this.logged = userData.data.logged;
     }
-    await this.$http.post(apiRoutes.mediaTokenTransmitter, {
+    await this.$http.post(window.apiRoutes.mediaTokenTransmitter, {
       email: userData.data.user.email,
       token: userData.data.token.token,
-    }, backendHeaders(userData.data.token.token)).then(response => {
+    }).then(response => {
       if(response.data.auth && response.data.registered && response.data.token){
         this.mainLoad = false;
         this.mediaToken = response.data.token;
@@ -161,11 +170,6 @@ export default {
     let gddata = getgds(this.$route.params.id);
     this.gds = gddata.gds;
     this.currgd = gddata.current;
-    this.$ga.page({
-      page: "/PDF/"+this.url.split('/').pop()+"/",
-      title: decodeURIComponent(this.url.split('/').pop().split('.').slice(0,-1).join('.'))+" - "+this.siteName,
-      location: window.location.href
-    });
   },
   watch: {
     screenWidth: function() {

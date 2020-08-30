@@ -2,9 +2,6 @@ import Vue from "vue";
 import febAlive from "feb-alive";
 import VueRouter from "vue-router";
 import axios from "axios";
-import NProgress from "nprogress";
-import "nprogress/nprogress.css";
-import { apiRoutes } from "@/utils/backendUtils";
 import { decodeSecret, getItem, setItem, removeItem } from '@utils/encryptUtils';
 // Routing data
 
@@ -49,7 +46,6 @@ Vue.use(febAlive, { router });
  * ASD
  */
 router.beforeEach( (to, from, next) => {
-  NProgress.start();
   store.dispatch("acrou/cancelToken/cancel")
   const token = getItem("tokendata");
   const user = getItem("userdata");
@@ -94,7 +90,7 @@ router.beforeEach( (to, from, next) => {
           next({ params: { userinfo: userData, tokeninfo: tokenData } });
         }
       } else {
-        axios.post(apiRoutes.verifyRoute, {
+        axios.post(window.apiRoutes.verifyRoute, {
           email: userData.email,
           token: tokenData.token
         }).then(response => {
@@ -152,14 +148,6 @@ router.beforeEach( (to, from, next) => {
       }
   }else {
       next()
-  }
-});
-
-router.afterEach((to) => {
-  NProgress.done();
-  if (process.env.NODE_ENV === "development") {
-    console.log("after:");
-    console.log(to);
   }
 });
 

@@ -272,7 +272,6 @@ import {
   initializeUser,
   getgds,
 } from "@utils/localUtils";
-import { apiRoutes, backendHeaders } from "@/utils/backendUtils";
 import Loading from 'vue-loading-overlay';
 import 'vue-loading-overlay/dist/vue-loading.css';
 export default {
@@ -324,9 +323,9 @@ export default {
                 columnVisibility: false,
                 loading: false,
                 fullpage: true,
-                pendingadmin: apiRoutes.getPendingAdmins,
-                pendingsuperadmin: apiRoutes.getPendingSuperAdmins,
-                pendingusers: apiRoutes.getPendingUsers,
+                pendingadmin: window.apiRoutes.getPendingAdmins,
+                pendingsuperadmin: window.apiRoutes.getPendingSuperAdmins,
+                pendingusers: window.apiRoutes.getPendingUsers,
                 pendingUserList: [],
                 listname: "",
             }
@@ -343,7 +342,7 @@ export default {
                         email: this.email,
                         adminpass: this.password,
                         adminuseremail: this.user.email,
-                  }, backendHeaders(this.token.token))
+                  })
                   .then(response => {
                       if(response){
                         if(response.data.auth && response.data.registered){
@@ -351,14 +350,12 @@ export default {
                           this.successMessage = true;
                           this.errorMessage = false;
                           this.metatitle = "Success...";
-                          this.$ga.event({eventCategory: "Add User",eventAction: "Success"+" - "+this.siteName,eventLabel: "Register"})
                           this.resultmessage = response.data.message
                         } else {
                           this.loading = false;
                           this.successMessage = false;
                           this.errorMessage = true;
                           this.metatitle = "Failed...";
-                          this.$ga.event({eventCategory: "Add User",eventAction: "Failed"+" - "+this.siteName,eventLabel: "Register"})
                           this.resultmessage = response.data.message
                         }
                       }
@@ -387,7 +384,7 @@ export default {
               this.loading = true;
               this.$http.post(route, {
                     adminuseremail: this.user.email,
-              }, backendHeaders(this.token.token)).then(response => {
+              }).then(response => {
                 if(response){
                   if(response.data.auth && response.data.registered){
                     this.loading = false;
@@ -407,7 +404,6 @@ export default {
               })
             },
             gotoPage(url, cmd) {
-              this.$ga.event({eventCategory: "Page Navigation",eventAction: url+" - "+this.siteName,eventLabel: "Register"})
               if(cmd){
                 this.$router.push({ path: '/'+ this.currgd.id + ':' + cmd + url })
               } else {
@@ -433,19 +429,17 @@ export default {
             async handleSpam(post, user) {
               this.loading = true;
               this.metatitle = "Adding Spammers...";
-              await this.$http.post(apiRoutes.quickaddSpam, {
+              await this.$http.post(window.apiRoutes.quickaddSpam, {
                 email: user.email,
                 adminuseremail: this.user.email
-              }, backendHeaders(this.token.token)).then(response => {
+              }).then(response => {
                 if(response){
                   if(response.data.auth && response.data.registered){
                     this.handleDelete(post, user);
                     this.metatitle = "Adding Spammers...";
-                    this.$ga.event({eventCategory: "Add Spam",eventAction: "Success"+" - "+this.siteName,eventLabel: "Register"})
                   } else {
                     this.metatitle = "Failed to Add";
                     this.loading = false;
-                    this.$ga.event({eventCategory: "Add Spam",eventAction: "Failed"+" - "+this.siteName,eventLabel: "Register"})
                   }
                 }
               })
@@ -456,29 +450,27 @@ export default {
               let route = "";
               let reloadRoute = "";
               if(post == "user"){
-                route = apiRoutes.deletePendingUsers;
+                route = window.apiRoutes.deletePendingUsers;
                 reloadRoute = this.pendingusers;
               } else if(post == "admin"){
-                route = apiRoutes.deletePendingAdmins;
+                route = window.apiRoutes.deletePendingAdmins;
                 reloadRoute = this.pendingadmin;
               } else if(post == "superadmin"){
                 reloadRoute = this.pendingsuperadmin;
-                route = apiRoutes.deletePendingSuperAdmins;
+                route = window.apiRoutes.deletePendingSuperAdmins;
               }
               this.$http.post(route, {
                 email: user.email,
                 adminuseremail: this.user.email
-              }, backendHeaders(this.token.token)).then(response => {
+              }).then(response => {
                 if(response){
                   if(response.data.auth && response.data.removed){
                     this.pendingUserList = [];
                     this.metatitle = "Removed";
-                    this.$ga.event({eventCategory: "Delete",eventAction: "Success"+" - "+this.siteName,eventLabel: "Register"})
                     this.getPendingUsers(reloadRoute);
                     this.loading = false;
                   } else {
                     this.metatitle = "Failed to Remove";
-                    this.$ga.event({eventCategory: "Delete",eventAction: "Failed"+" - "+this.siteName,eventLabel: "Register"})
                     this.loading = false;
                     this.modal = true;
                   }
@@ -508,12 +500,10 @@ export default {
           var userData = initializeUser();
           if(userData.isThere){
             if(userData.type == "hybrid"){
-              this.$ga.event({eventCategory: "User Initialized",eventAction: "Hybrid - "+this.siteName,eventLabel: "Register",nonInteraction: true})
               this.user = userData.data.user;
               this.logged = userData.data.logged;
               this.loading = userData.data.loading;
             } else if(userData.type == "normal"){
-              this.$ga.event({eventCategory: "User Initialized",eventAction: "Normal - "+this.siteName,eventLabel: "Register",nonInteraction: true})
               this.user = userData.data.user;
               this.token = userData.data.token;
               this.logged = userData.data.logged;
@@ -530,26 +520,21 @@ export default {
           let gddata = getgds(this.$route.params.id);
           this.gds = gddata.gds;
           this.currgd = gddata.current;
-          this.$ga.page({
-            page: this.$route.path,
-            title: "Add/Promote Users"+" - "+this.siteName,
-            location: window.location.href
-          });
         },
         watch: {
           role: function() {
             if(this.role == "admin"){
               this.namedisabled = true;
               this.validateData();
-              this.apiurl = apiRoutes.upgradeAdmin
+              this.apiurl = window.apiRoutes.upgradeAdmin
             } else if(this.role == "superadmin"){
               this.namedisabled = true;
               this.validateData();
-              this.apiurl = apiRoutes.upgradeSuperAdmin
+              this.apiurl = window.apiRoutes.upgradeSuperAdmin
             } else {
               this.namedisabled = false;
               this.validateData();
-              this.apiurl = apiRoutes.registerRoute
+              this.apiurl = window.apiRoutes.registerRoute
             }
           },
           name: "validateData",

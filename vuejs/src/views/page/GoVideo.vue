@@ -13,7 +13,7 @@
               </span>
               <span class="subtitle has-text-netflix-only">{{ playtext }}</span>
             </div>
-            <vue-plyr ref="plyr" v-bind:key="videokey" :options="options">
+            <vue-plyr ref="plyr" v-bind:key="videokey">
               <video :poster="poster" :src="apiurl" class="video-content">
                 <source :src="apiurl" type="video/mp4" size="Original Format">
                 <track v-for="(sub, index) in suburl" kind="captions" :label="sub.label" :src="sub.url" :srclang="sub.label" v-bind:key="index">
@@ -32,7 +32,7 @@
                   </button>
                 </div>
                 <div :class="ismobile ? 'column has-text-netflix has-text-centered is-medium is-3' : 'column has-text-netflix is-medium has-text-centered is-1'">
-                  <button class="button is-netflix-red" @click="copy" v-tooltip.bottom-start="'Copy Link'">
+                  <button class="button is-netflix-red" v-clipboard:copy="externalUrl" v-tooltip.bottom-start="'Copy Link'">
                     <span class="icon">
                       <i class="fa fa-copy fontonly"></i>
                     </span>
@@ -189,25 +189,24 @@
 </template>
 
 <script>
-import { apiRoutes, backendHeaders } from "@/utils/backendUtils";
 import { initializeUser, getgds } from "@utils/localUtils";
 import {
   formatDate,
   formatFileSize,
   checkoutPath,
   checkView,
+  checkExtends,
 } from "@utils/AcrouUtil";
 import Loading from 'vue-loading-overlay';
 import InfiniteLoading from "vue-infinite-loading";
 import { mapState } from "vuex";
 import { decode64 } from "@utils/AcrouUtil";
 import { srt2vtt } from "@utils/playUtils";
-import VuePlyr from "vue-plyr";
+
 export default {
   components: {
     InfiniteLoading,
-    Loading,
-    VuePlyr
+    Loading
   },
   metaInfo() {
     return {
@@ -261,8 +260,8 @@ export default {
         page_token: null,
         page_index: 0,
       },
-      files: [],
       player: {},
+      files: [],
       viewer: false,
       icon: {
         "video/mp4": "icon-mp",
@@ -281,47 +280,7 @@ export default {
       this.page.page_token++;
       this.render($state);
     },
-    async initializeUser(){
-      var userData = await initializeUser();
-      if(userData.isThere){
-        if(userData.type == "hybrid"){
-          this.user = userData.data.user;
-          this.$ga.event({eventCategory: "User Initialized",eventAction: "Hybrid - "+this.siteName,eventLabel: "Video Page",nonInteraction: true})
-          this.logged = userData.data.logged;
-        } else if(userData.type == "normal"){
-          this.$ga.event({eventCategory: "User Initialized",eventAction: "Normal - "+this.siteName,eventLabel: "Video Page",nonInteraction: true})
-          this.user = userData.data.user;
-          this.token = userData.data.token;
-          this.logged = userData.data.logged;
-        }
-      } else {
-        this.logged = userData.data.logged;
-      }
-      await this.$http.post(apiRoutes.mediaTokenTransmitter, {
-        email: userData.data.user.email,
-        token: userData.data.token.token,
-      }, backendHeaders(userData.data.token.token)).then(response => {
-        if(response.data.auth && response.data.registered && response.data.token){
-          this.mediaToken = response.data.token;
-        } else {
-          this.mediaToken = "";
-        }
-      }).catch(e => {
-        console.log(e);
-        this.mediaToken = "";
-      })
-    },
-    async render($state) {
-      this.mainLoad = true;
-      await this.initializeUser();
-      this.player = this.$refs.plyr.player
-      await this.getFiles($state);
-      await this.getVideourl();
-      this.checkMobile();
-      this.mainLoad = false;
-      this.player.play();
-    },
-    getFiles($state){
+    render($state) {
       this.metatitle = "Loading...";
       var path = this.url.split(this.url.split('/').pop())[0];
       var password = localStorage.getItem("password" + path);
@@ -417,11 +376,6 @@ export default {
            let blob = await this.getSrtFile(url);
            if(blob.success){
              this.sub = true;
-             this.$notify({
-               title: "Subtitle Loaded",
-               message: "Done",
-               type: "info",
-             })
              this.suburl = this.suburl.concat([{url: blob.blobData, label: "Default"}]);
              this.videokey = this.videokey + 1
            } else {
@@ -434,11 +388,6 @@ export default {
            let blob = await this.getSrtFile(url);
            if(blob.success){
              this.sub = true;
-             this.$notify({
-               title: "Subtitle Loaded",
-               message: "Done",
-               type: "info",
-             })
              this.suburl = this.suburl.concat([{url: blob.blobData, label: groups.label}]);
              this.videokey = this.videokey + 1
            } else {
@@ -474,11 +423,6 @@ export default {
         let blob = await this.getSrtFile(url);
         if(blob.success){
           this.suburl = this.suburl.concat([{url: blob.blobData, label: label}]);
-          this.$notify({
-            title: "Subtitle Loaded",
-            message: "Done",
-            type: "info",
-          })
           this.videokey = this.videokey + 1
           this.successMessage = true;
           this.resultmessage = "Subtitle Loaded Successfully !"
@@ -497,11 +441,6 @@ export default {
         if(blob.success){
           this.suburl = this.suburl.concat([{url: blob.blobData, label: label}]);
           this.videokey = this.videokey + 1
-          this.$notify({
-            title: "Subtitle Loaded",
-            message: "Done",
-            type: "info",
-          })
           this.successMessage = true;
           this.resultmessage = "Subtitle Loaded Successfully !"
           this.subButLoad = false;
@@ -515,69 +454,19 @@ export default {
         }
       }
     },
-    loadHls(options) {
-      import("@/plugin/video-plugins/hls").then((res) => {
-        var Hls = res.default;
-        Hls({
-          ...options,
-          callback: (hls) => {
-            // Handle changing captions
-            this.player.on("languagechange", () => {
-              setTimeout(
-                () => (hls.subtitleTrack = this.player.currentTrack),
-                50
-              );
-            });
-          },
-        });
-      });
-    },
-    loadFlv(options) {
-      import("@/plugin/video-plugins/flv").then((res) => {
-        var Flv = res.default;
-        Flv(options);
-      });
-    },
     thum(url) {
       return url ? `/${this.$route.params.id}:view?url=${url}` : "";
     },
-    copy() {
-      this.$copyText(this.externalUrl);
-    },
     downloadButton() {
-      this.$notify({
-        title: "Downloading Now",
-        message: "Generating Links and Downloading",
-        type: "success",
-      })
-      this.$ga.event({eventCategory: "Video Download",eventAction: "Download - "+this.siteName,eventLabel: "Video Page",nonInteraction: true})
       location.href = this.downloadUrl;
       return;
     },
     getVideourl() {
-      let path = encodeURI(this.url);
-      let index = path.lastIndexOf(".");
-      let suffix = path.substring(index + 1, path.length);
-      this.videoname = this.url.split('/').pop();
+      // Easy to debug in development environment
       this.videourl = window.location.origin + encodeURI(this.url);
       this.apiurl = this.videourl+"?player=internal"+"&email="+this.user.email+"&token="+this.token.token;
       this.externalUrl = this.videourl+"?player=external"+"&email="+this.user.email+"&token="+this.mediaToken;
       this.downloadUrl = this.videourl+"?player=download"+"&email="+this.user.email+"&token="+this.mediaToken;
-      let options = {
-        src: this.apiurl,
-        autoplay: true,
-        media: this.player.media,
-      };
-      if (suffix === "m3u8") {
-        this.loadHls(options);
-      } else if (suffix === "flv") {
-        this.loadFlv(options);
-      }
-      this.$notify({
-        title: "Video Loaded",
-        message: "Done",
-        type: "success",
-      })
     },
     getIcon(type) {
       return "#" + (this.icon[type] ? this.icon[type] : "icon-weizhi");
@@ -589,10 +478,44 @@ export default {
       this.poster = data;
     },
     action(file, target) {
+      if (file.mimeType.indexOf("image") != -1) {
+        this.viewer = true;
+        this.$nextTick(() => {
+          let index = this.images.findIndex((item) => item.path === file.path);
+          this.$viewer.view(index);
+        });
+        return;
+      }
+      let cmd = this.$route.params.cmd;
+      if (cmd && cmd === "search") {
+        this.goSearchResult(file, target);
+        return;
+      }
+      this.target(file, target);
+    },
+    target(file, target) {
       let path = file.path;
+      if (target === "_blank") {
+        window.open(path);
+        return;
+      }
+      if (target === "copy") {
+        this.copy(path);
+        return;
+      }
+      if (target === "down" || (!checkExtends(path) && !file.isFolder)) {
+        location.href = path.replace(/^\/(\d+:)\//, "/$1down/");
+        return;
+      }
       if (target === "view") {
         this.$router.push({
           path: checkView(path),
+        });
+        return;
+      }
+      if (file.mimeType === "application/vnd.google-apps.folder") {
+        this.$router.push({
+          path: path,
         });
         return;
       }
@@ -617,29 +540,6 @@ export default {
         return decode64(this.$route.params.path);
       }
       return "";
-    },
-    options() {
-      return {
-        autoplay: false,
-        invertTime: false,
-        settings: ["quality", "speed", "loop", "captions"],
-        ratio: "16:9",
-        controls: [
-          "play-large",
-          "restart",
-          "play",
-          "progress",
-          "current-time",
-          "duration",
-          "mute",
-          "volume",
-          "captions",
-          "settings",
-          "pip",
-          "airplay",
-          "fullscreen",
-        ],
-      };
     },
     ...mapState("acrou/view", ["mode"]),
     players() {
@@ -700,24 +600,55 @@ export default {
       return Buffer.from("AA" + this.externalUrl + "ZZ").toString("base64");
     },
   },
+  created() {
+    let gddata = getgds(this.$route.params.id);
+    this.gds = gddata.gds;
+    this.currgd = gddata.current;
+  },
+  async beforeMount() {
+    this.mainload = true;
+    var userData = await initializeUser();
+    if(userData.isThere){
+      if(userData.type == "hybrid"){
+        this.user = userData.data.user;
+        this.logged = userData.data.logged;
+      } else if(userData.type == "normal"){
+        this.user = userData.data.user;
+        this.token = userData.data.token;
+        this.logged = userData.data.logged;
+      }
+    } else {
+      this.logged = userData.data.logged;
+    }
+    await this.$http.post(window.apiRoutes.mediaTokenTransmitter, {
+      email: userData.data.user.email,
+      token: userData.data.token.token,
+    }).then(response => {
+      if(response.data.auth && response.data.registered && response.data.token){
+        this.mainLoad = false;
+        this.mediaToken = response.data.token;
+        this.getVideourl();
+      } else {
+        this.mainLoad = false;
+        this.mediaToken = "";
+      }
+    }).catch(e => {
+      console.log(e);
+      this.mainLoad = false;
+      this.mediaToken = "";
+    })
+  },
   mounted() {
     if(this.$audio.player() != undefined) this.$audio.destroy();
+    this.checkMobile();
+    this.render();
     if(window.themeOptions.loading_image){
       this.loadImage = window.themeOptions.loading_image;
     } else {
       this.loadImage = "https://i.ibb.co/bsqHW2w/Lamplight-Mobile.gif"
     }
-    this.render();
-  },
-  created() {
-    let gddata = getgds(this.$route.params.id);
-    this.gds = gddata.gds;
-    this.currgd = gddata.current;
-    this.$ga.page({
-      page: "/Video/"+this.url.split('/').pop()+"/",
-      title: decodeURIComponent(this.url.split('/').pop().split('.').slice(0,-1).join('.'))+" - "+this.siteName,
-      location: window.location.href
-    });
+    this.player = this.$refs.plyr.player
+    this.videoname = this.url.split('/').pop();
   },
   watch: {
     searchBarTerm: function() {
@@ -756,7 +687,6 @@ export default {
         this.playtext = "Loading Awesomeness..";
       })
       this.player.on('play', () => {
-        this.$ga.event({eventCategory: this.videoname,eventAction: "Started Playing"+" - "+this.siteName,eventLabel: "Video Page"})
         this.playicon="fas fa-spin fa-compact-disc";
         this.metatitle = "Playing"+"-"+decodeURIComponent(this.url.split('/').pop().split('.').slice(0,-1).join('.'));
         this.playtext="Playing"

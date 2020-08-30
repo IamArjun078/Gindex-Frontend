@@ -7,6 +7,7 @@
         v-if="mode === 'list'"
         :icons="getIcon"
         :action="action"
+        :copy="copy"
       />
       <grid-view
         class="g2-content"
@@ -39,23 +40,6 @@
     ></div>
     <headmd :option="headmd" v-if="renderHeadMD && headmd.display"></headmd>
     <readmemd :option="readmemd" v-if="renderReadMeMD && readmemd.display"></readmemd>
-    <viewer
-      v-if="viewer && images && images.length > 0"
-      :images="images"
-      class="is-hidden"
-      ref="viewer"
-      :options="{ toolbar: true, url: 'data-source' }"
-      @inited="inited"
-    >
-      <img
-        v-for="image in images"
-        :src="thum(image.thumbnailLink)"
-        :data-source="image.path+'?player=internal'+'&email='+user.email+'&token='+token.token"
-        :key="image.path"
-        :alt="image.name"
-        class="image"
-      />
-    </viewer>
   </div>
 </template>
 
@@ -66,7 +50,7 @@ import {
   checkoutPath,
   checkView,
 } from "@utils/AcrouUtil";
-import { initializeUser, getgds, icon } from "@utils/localUtils";
+import { getgds, icon } from "@utils/localUtils";
 import { mapState } from "vuex";
 import BreadCrumb from "../common/BreadCrumb";
 import ListView from "./components/list";
@@ -106,15 +90,12 @@ export default {
       loadImage: "",
       currentLocation: "",
       gds: [],
-      user: {},
-      token: {},
       currgd: {},
       page: {
         page_token: null,
         page_index: 0,
       },
       files: [],
-      viewer: false,
       readmeLink: "",
       headLink: "",
       headmd: { display: false, file: {}, path: "" },
@@ -145,7 +126,7 @@ export default {
     images() {
       return this.files.filter(
         (file) => file.mimeType.indexOf("image") != -1
-      )
+      );
     },
     siteName() {
       return window.gds.filter((item, index) => {
@@ -160,16 +141,10 @@ export default {
     },
   },
   created() {
-    this.initializeUser();
     this.render();
     let gddata = getgds(this.$route.params.id);
     this.gds = gddata.gds;
     this.currgd = gddata.current;
-    this.$ga.page({
-      page: this.$route.path,
-      title: this.$route.name+" - "+this.siteName,
-      location: window.location.href
-    });
   },
   methods: {
     infiniteHandler($state) {
@@ -266,6 +241,24 @@ export default {
         this.$router.go(-1);
       }
     },
+    copy(path) {
+      let origin = window.location.origin;
+      path = origin + encodeURI(path);
+      this.$copyText(path)
+        .then(() => {
+          this.$notify({
+            title: this.$t("notify.title"),
+            message: this.$t("copy.success"),
+            type: "success",
+          });
+        })
+        .catch(() => {
+          this.$notify.error({
+            title: this.$t("notify.title"),
+            message: this.$t("copy.error"),
+          });
+        });
+    },
     checkMobile() {
       var width = this.windowWidth > 0 ? this.windowWidth : this.screenWidth;
       if(width > 966){
@@ -274,51 +267,15 @@ export default {
         this.ismobile = true
       }
     },
-    async initializeUser() {
-      var userData = await initializeUser();
-      if(userData.isThere){
-        if(userData.type == "hybrid"){
-          this.user = userData.data.user;
-          this.$ga.event({eventCategory: "User Initialized",eventAction: "Hybrid - "+this.siteName,eventLabel: "Audio Page",nonInteraction: true})
-        } else if(userData.type == "normal"){
-          this.$ga.event({eventCategory: "User Initialized",eventAction: "Normal - "+this.siteName,eventLabel: "Audio Page",nonInteraction: true})
-          this.user = userData.data.user;
-          this.token = userData.data.token;
-        }
-      } else {
-        this.logged = userData.data.logged;
-      }
-    },
     thum(url) {
       return url ? `/${this.$route.params.id}:view?url=${url}` : "";
     },
-    inited(viewer) {
-      this.$viewer = viewer;
-    },
     action(file, target) {
-      this.$ga.event({eventCategory: "File Navigation",eventAction: file.name+" - "+this.siteName,eventLabel: "Files",nonInteraction: true})
       let cmd = this.$route.params.cmd;
-      if (file.mimeType === "application/vnd.google-apps.shortcut") {
-        this.$notify({
-          title: "notify.title",
-          message: "error.shortcut_not_down",
-          type: "warning",
-        });
-        return;
-      }
       if (cmd && cmd === "search") {
         this.goSearchResult(file, target);
         return;
       }
-      if (file.mimeType.startsWith("image/") && target === "view") {
-       this.viewer = true;
-       console.log(this.user.email);
-       this.$nextTick(() => {
-         let index = this.images.findIndex((item) => item.path === file.path);
-         this.$viewer.view(index);
-       });
-       return;
-     }
       this.target(file, target);
     },
     target(file, target) {

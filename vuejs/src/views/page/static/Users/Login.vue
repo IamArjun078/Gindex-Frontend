@@ -172,7 +172,6 @@ import {
   setItem,
   checkPass
 } from '@utils/encryptUtils';
-import { apiRoutes } from "@/utils/backendUtils";
 import { getgds } from "@utils/localUtils";
 import Loading from 'vue-loading-overlay';
 import 'vue-loading-overlay/dist/vue-loading.css';
@@ -223,7 +222,7 @@ import 'vue-loading-overlay/dist/vue-loading.css';
               this.loading = true;
                 e.preventDefault();
                 if (this.password.length > 0 && this.email.length > 0) {
-                    this.$http.post(apiRoutes.loginRoute, {
+                    this.$http.post(window.apiRoutes.loginRoute, {
                         email: this.email,
                         password: this.password
                     })
@@ -240,7 +239,6 @@ import 'vue-loading-overlay/dist/vue-loading.css';
                             this.loading = false;
                             this.errormessageVisibility = false;
                             this.successmessageVisibility = true;
-                            this.$ga.event({eventCategory: "Normal Login",eventAction: "Successfully Logged"+" - "+this.siteName,eventLabel: "Login"})
                             this.resultmessage = `Logged in Successfully as ${userData.name}. Your token will expire at ${ this.$moment(tokenData.expirydate).format("dddd, MMMM Do YYYY [at] hh:mm A")}.`;
                             this.$bus.$emit('logged', 'User Logged')
                             setTimeout(() => {
@@ -254,7 +252,6 @@ import 'vue-loading-overlay/dist/vue-loading.css';
                           }
                       } else {
                         this.metatitle = "Failed...";
-                        this.$ga.event({eventCategory: "Normal Login",eventAction: "Failed"+" - "+this.siteName,eventLabel: "Login"})
                         this.errormessageVisibility = true;
                         this.successmessageVisibility = false;
                         this.loading = false;
@@ -286,7 +283,6 @@ import 'vue-loading-overlay/dist/vue-loading.css';
                   this.loading = false;
                   this.errormessageVisibility = false;
                   this.successmessageVisibility = true;
-                  this.$ga.event({eventCategory: "Hybrid Login",eventAction: "Successfully Logged"+" - "+this.siteName,eventLabel: "Login"})
                   this.resultmessage = `Logged in Successfully as Guest User.You will Log Out after this Browser Session.`;
                   this.$bus.$emit('logged', 'User Logged');
                   setTimeout(() => {
@@ -295,7 +291,6 @@ import 'vue-loading-overlay/dist/vue-loading.css';
                 } else {
                   this.metatitle = "Failed...";
                   this.loading = false;
-                  this.$ga.event({eventCategory: "Hybrid Login",eventAction: "Failed"+" - "+this.siteName,eventLabel: "Login"})
                   this.errormessageVisibility = true;
                   this.successmessageVisibility = false;
                   this.resultmessage = `Hybrid Password is Wrong`;
@@ -303,7 +298,6 @@ import 'vue-loading-overlay/dist/vue-loading.css';
               } else {
                 this.metatitle = "Failed...";
                 this.loading = false;
-                this.$ga.event({eventCategory: "Hybrid Login",eventAction: "Failed"+" - "+this.siteName,eventLabel: "Login"})
                 this.errormessageVisibility = true;
                 this.successmessageVisibility = false;
                 this.resultmessage = `Hybrid Password is Wrong`;
@@ -320,7 +314,6 @@ import 'vue-loading-overlay/dist/vue-loading.css';
               }
             },
             gotoPage(url, cmd) {
-              this.$ga.event({eventCategory: "Page Navigation",eventAction: url+" - "+this.siteName,eventLabel: "Login"})
               if(cmd){
                 this.$router.push({ path: '/'+ this.currgd.id + ':' + cmd + url })
               } else {
@@ -340,19 +333,17 @@ import 'vue-loading-overlay/dist/vue-loading.css';
               this.loading = true;
               e.preventDefault();
               if(this.forgotEmail.length > 0){
-                this.$http.post(apiRoutes.forgotPass, {
+                this.$http.post(window.apiRoutes.forgotPass, {
                   email: this.forgotEmail
                 }).then(response => {
                   if(response.data.auth && response.data.registered && response.data.changed){
                     this.loading = false;
-                    this.$ga.event({eventCategory: "Forgot Password",eventAction: "Successfully Reset"+" - "+this.siteName,eventLabel: "Login"})
                     this.forgotSuccessMessage = true;
                     this.forgotErrorMessage = false;
                     this.metatitle = "Password Reset Success";
                     this.forgotMessage = response.data.message
                   } else {
                     this.loading = false;
-                    this.$ga.event({eventCategory: "Forgot Password",eventAction: "Failed"+" - "+this.siteName,eventLabel: "Login"})
                     this.forgotSuccessMessage = false;
                     this.forgotErrorMessage = true;
                     this.metatitle = "Password Reset Failed";
@@ -390,11 +381,6 @@ import 'vue-loading-overlay/dist/vue-loading.css';
           let gddata = getgds(this.$route.params.id);
           this.gds = gddata.gds;
           this.currgd = gddata.current;
-          this.$ga.page({
-            page: this.$route.path,
-            title: "Login"+" - "+this.siteName,
-            location: window.location.href
-          });
         },
         watch: {
           email: "validateData",

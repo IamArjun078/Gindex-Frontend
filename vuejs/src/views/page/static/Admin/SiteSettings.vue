@@ -66,7 +66,6 @@ import {
   initializeUser,
   getgds,
 } from "@utils/localUtils";
-import { apiRoutes, backendHeaders } from "@/utils/backendUtils";
 import Loading from 'vue-loading-overlay';
 import 'vue-loading-overlay/dist/vue-loading.css';
   export default {
@@ -111,7 +110,6 @@ import 'vue-loading-overlay/dist/vue-loading.css';
     },
     methods: {
       gotoPage: function(url, cmd){
-        this.$ga.event({eventCategory: "Page Navigation",eventAction: url+" - "+this.siteName,eventLabel: "Admin Area"})
         if(cmd){
           this.$router.push({ path: '/'+ this.currgd.id + ':' + cmd + url })
         } else {
@@ -120,7 +118,7 @@ import 'vue-loading-overlay/dist/vue-loading.css';
       },
       getSiteSettings(){
         this.loading = true;
-        this.$http.post(apiRoutes.getSiteSettings).then(response => {
+        this.$http.post(window.apiRoutes.getSiteSettings).then(response => {
           if(response.data.auth && response.data.registered){
             this.request = response.data.data.requests;
             this.adminreqs = response.data.data.adminRequests;
@@ -145,11 +143,11 @@ import 'vue-loading-overlay/dist/vue-loading.css';
       },
       handleSavePrefs(){
         this.loading = true;
-        this.$http.post(apiRoutes.setSiteSettings, {
+        this.$http.post(window.apiRoutes.setSiteSettings, {
           email: this.user.email,
           requests: this.request,
           adminrequests: this.adminreqs
-        }, backendHeaders(this.token.token)).then(async response => {
+        }).then(async response => {
           this.loading = false;
           if(response.data.auth && response.data.registered && response.data.changed){
             await this.getSiteSettings();
@@ -189,12 +187,10 @@ import 'vue-loading-overlay/dist/vue-loading.css';
       var userData = initializeUser();
       if(userData.isThere){
         if(userData.type == "hybrid"){
-          this.$ga.event({eventCategory: "User Initialized",eventAction: "Hybrid - "+this.siteName,eventLabel: "Site Settings",nonInteraction: true})
           this.user = userData.data.user;
           this.logged = userData.data.logged;
           this.loading = userData.data.loading;
         } else if(userData.type == "normal"){
-          this.$ga.event({eventCategory: "User Initialized",eventAction: "Normal - "+this.siteName,eventLabel: "Site Settings",nonInteraction: true})
           this.user = userData.data.user;
           this.token = userData.data.token;
           this.logged = userData.data.logged;
@@ -214,11 +210,6 @@ import 'vue-loading-overlay/dist/vue-loading.css';
       let gddata = getgds(this.$route.params.id);
       this.gds = gddata.gds;
       this.currgd = gddata.current;
-      this.$ga.page({
-        page: this.$route.path,
-        title: "Admin Area"+" - "+this.siteName,
-        location: window.location.href
-      });
     },
     watch: {
       request: "checkButtonDisability",
